@@ -1,10 +1,11 @@
 require 'gosu'
 require_relative 'defstruct'
+require_relative 'vector'
 
-GRAVITY = 600 # pixels/sec^2
-JUMP_VEL = 300
-
-
+GRAVITY = Vec[0, 600] # pixels/sec^2
+JUMP_VEL = Vec[0, -300]
+OBSTACLE_SPEED = 200 # pixels/sec
+OBSTACLE_SPAWN_INTERVAL = 1.3 # spawn new obst ever 2 secs
 
 Obstacle = DefStruct.new{{
   y: 0,
@@ -13,8 +14,10 @@ Obstacle = DefStruct.new{{
 
 GameState = DefStruct.new{{
   scroll_x: 0,
-  player_y: 200,
-  player_y_vel: 0,
+  player_pos: Vec[0,0],
+  player_vel: Vec[0,0],
+  obstacles: [], # Array of Vecs
+  obstacle_countdown: OBSTACLE_SPAWN_INTERVAL,
 }}
 
 class GameWindow < Gosu::Window
@@ -32,33 +35,53 @@ class GameWindow < Gosu::Window
   end
 
   def button_down(button)
-    close if button == Gosu::KbEscape
 
-    if button == Gosu::KbSpace
-      @state.player_y_vel = -JUMP_VEL
+    case button
+    when Gosu::KbEscape then close
+    when Gosu::KbSpace then @state.player_vel.set!(JUMP_VEL)
+    # when Gosu::KbO then spawn_obstacle
     end
   end
 
+  def spawn_obstacle
+    @state.obstacles << Vec[width, 200]
+  end
+
   def update
-    @state.scroll_x += 3
+    dt = update_interval / 1000.0 # delta time
+
+    @state.scroll_x += dt * OBSTACLE_SPEED * 0.5 # update foreground speed to make obst appear moving faster
     if @state.scroll_x > @images[:foreground].width
       @state.scroll_x = 0
     end
 
-    dt = update_interval / 1000.0 # delta time
-    @state.player_y_vel += GRAVITY * dt
-    @state.player_y += @state.player_y_vel * dt
+    @state.player_vel += GRAVITY * dt
+    @state.player_pos += @state.player_vel * dt
+
+    @state.obstacle_countdown -= dt
+    if @state.obstacle_countdown <= 0
+      spawn_obstacle
+      @state.obstacle_countdown += OBSTACLE_SPAWN_INTERVAL
+    end
+
+    @state.obstacles.each do |obst|
+      obst.x -= dt * OBSTACLE_SPEED
+    end
   end
 
   def draw
     @images[:background].draw(0, 0, 0)
     @images[:foreground].draw(-@state.scroll_x, 0, 0)
     @images[:foreground].draw(-@state.scroll_x + @images[:foreground].width, 0, 0)
-    @images[:player].draw(20, @state.player_y, 0)
-    @images[:obstacle].draw(200, -300, 0)
-    scale(1, -1) do
-      @images[:obstacle].draw(200, -height - 400, 0)
+
+
+    @state.obstacles.each do |obst|
+      @images[:obstacle].draw(obst.x, -@images[:obstacle].height + obst.y, 0)
+      scale(1, -1) do
+        # @images[:obstacle].draw(obst.x, -height - 400, 0)
+      end
     end
+    @images[:player].draw(20, @state.player_pos.y, 0)
   end
 end
 
