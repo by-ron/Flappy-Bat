@@ -9,6 +9,7 @@ OBSTACLE_SPAWN_INTERVAL = 1.3 # spawn new obst ever 2 secs
 OBSTACLE_GAP = 115 # pixels
 DEATH_VELOCITY = Vec[20, -500] # pixels/s
 DEATH_ROT_VELOCITY = 360 # degrees/s
+RESTART_INTERVAL = 2 # seconds
 
 Rect = DefStruct.new{{
   pos: Vec[0, 0],
@@ -35,6 +36,7 @@ GameState = DefStruct.new{{
   player_rotation: 0,
   obstacles: [], # Array of obstacles
   obstacle_countdown: OBSTACLE_SPAWN_INTERVAL,
+  restart_countdown: RESTART_INTERVAL,
 }}
 
 class GameWindow < Gosu::Window
@@ -79,11 +81,13 @@ class GameWindow < Gosu::Window
     @state.player_vel += GRAVITY * dt
     @state.player_pos += @state.player_vel * dt
 
-    @state.obstacle_countdown -= dt
-    if @state.obstacle_countdown <= 0
-      spawn_obstacle
-      @state.obstacle_countdown += OBSTACLE_SPAWN_INTERVAL
-      puts @state.obstacles.size
+    if @state.alive
+      @state.obstacle_countdown -= dt
+      if @state.obstacle_countdown <= 0
+        spawn_obstacle
+        @state.obstacle_countdown += OBSTACLE_SPAWN_INTERVAL
+        puts @state.obstacles.size
+      end
     end
 
     @state.obstacles.each do |obst|
@@ -103,12 +107,21 @@ class GameWindow < Gosu::Window
 
     unless @state.alive
       @state.player_rotation += dt *DEATH_ROT_VELOCITY
+      @state.restart_countdown -= dt
+      if @state.restart_countdown <= 0
+        restart_game
+      end
     end
+  end
+
+  def restart_game
+    @state = GameState.new(scroll_x: @state.scroll_x)
   end
 
   def player_is_colliding?
     player_r = player_rect
-    obstacle_rects.find { |obst_r| rects_intersect?(player_r, obst_r) }
+    return true if obstacle_rects.find { |obst_r| rects_intersect?(player_r, obst_r) }
+    not rects_intersect?(player_r, Rect.new(pos: Vec[0, 0], size: Vec[width, height]))
   end
 
   def rects_intersect?(r1, r2)
