@@ -8,14 +8,20 @@ OBSTACLE_SPEED = 200 # pixels/sec
 OBSTACLE_SPAWN_INTERVAL = 1.3 # spawn new obst ever 2 secs
 OBSTACLE_GAP = 100 # pixels
 
+Rect = DefStruct.new{{
+  pos: Vec[0, 0],
+  size: Vec[0, 0],
+}}
+
 Obstacle = DefStruct.new{{
   y: 0,
   x: 0
 }}
 
 GameState = DefStruct.new{{
+  alive: true,
   scroll_x: 0,
-  player_pos: Vec[0,0],
+  player_pos: Vec[20,0],
   player_vel: Vec[0,0],
   obstacles: [], # Array of Vecs
   obstacle_countdown: OBSTACLE_SPAWN_INTERVAL,
@@ -68,7 +74,21 @@ class GameWindow < Gosu::Window
     @state.obstacles.each do |obst|
       obst.x -= dt * OBSTACLE_SPEED
     end
+
+    if player_is_colliding?
+      @state.alive = false
+    end
   end
+
+  def player_is_colliding?
+    player_r = player_rect
+    obstacle_rects.find { |obst_r| rects_intersect?(player_r, obst_r) }
+  end
+
+  def rects_intersect?(left, right)
+
+  end
+
 
   def draw
     @images[:background].draw(0, 0, 0)
@@ -85,8 +105,57 @@ class GameWindow < Gosu::Window
         @images[:obstacle].draw(obst.x, -height - img_y + (height - obst.y - OBSTACLE_GAP), 0)
       end
     end
-    @images[:player].draw(20, @state.player_pos.y, 0)
+    @images[:player].draw(@state.player_pos.x, @state.player_pos.y, 0)
+
+    debug_draw
   end
+
+  def player_rect
+    Rect.new(
+      pos: @state.player_pos,
+      size: Vec[@images[:player].width, @images[:player].height]
+    )
+  end
+
+  def obstacle_rects
+    img_y = @images[:obstacle].height
+    obst_size = Vec[@images[:obstacle].width, @images[:obstacle].height]
+
+    @state.obstacles.flat_map do |obst|
+      top = Rect.new(pos: Vec[obst.x, obst.y - img_y], size: obst_size)
+      bottom = Rect.new(pos: Vec[obst.x, obst.y + OBSTACLE_GAP], size: obst_size)
+      [top, bottom]
+    end
+  end
+
+  def debug_draw
+    draw_debug_rect(player_rect)
+    obstacle_rects.each do |obst_rect|
+      draw_debug_rect(obst_rect)
+    end
+  end
+
+  def draw_debug_rect(rect)
+    color = Gosu::Color::GREEN;
+    x = rect.pos.x
+    y = rect.pos.y
+    w = rect.size.x
+    h = rect.size.y
+
+    points = [
+      Vec[x, y],
+      Vec[x + w, y],
+      Vec[x + w, y + h],
+      Vec[x, y + h]
+    ]
+
+    points.each_with_index do |p1, idx|
+      p2 = points[(idx + 1) % points.size]
+      draw_line(p1.x, p1.y, color, p2.x, p2.y, color)
+    end
+  end
+
+
 end
 
 window = GameWindow.new(320, 480, false)
