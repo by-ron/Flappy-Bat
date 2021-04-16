@@ -152,7 +152,7 @@ class GameWindow < Gosu::Window
     end
 
     @images[:player].draw_rot(@state.player_pos.x, @state.player_pos.y, 0, @state.player_rotation, 0, 0)
-    @font.draw_rel(@state.score.to_s, width/2.0, 60, 0, 0.5, 0.5)
+    @font.draw_rel(@state.score.to_s, width/2.0, 35, 0, 0.5, 0.5)
     # debug_draw # toggle rect collision lines
   end
 
