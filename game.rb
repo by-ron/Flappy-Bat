@@ -6,7 +6,9 @@ GRAVITY = Vec[0, 600] # pixels/sec^2
 JUMP_VEL = Vec[0, -300]
 OBSTACLE_SPEED = 200 # pixels/sec
 OBSTACLE_SPAWN_INTERVAL = 1.3 # spawn new obst ever 2 secs
-OBSTACLE_GAP = 100 # pixels
+OBSTACLE_GAP = 115 # pixels
+DEATH_VELOCITY = Vec[20, -500] # pixels/s
+DEATH_ROT_VELOCITY = 360 # degrees/s
 
 Rect = DefStruct.new{{
   pos: Vec[0, 0],
@@ -24,10 +26,12 @@ Obstacle = DefStruct.new{{
 }}
 
 GameState = DefStruct.new{{
+  started: false,
   alive: true,
   scroll_x: 0,
-  player_pos: Vec[20,0],
+  player_pos: Vec[20,200],
   player_vel: Vec[0,0],
+  player_rotation: 0,
   obstacles: [], # Array of Vecs
   obstacle_countdown: OBSTACLE_SPAWN_INTERVAL,
 }}
@@ -47,11 +51,11 @@ class GameWindow < Gosu::Window
   end
 
   def button_down(button)
-
     case button
     when Gosu::KbEscape then close
-    when Gosu::KbSpace then @state.player_vel.set!(JUMP_VEL)
-    # when Gosu::KbO then spawn_obstacle
+    when Gosu::KbSpace
+      @state.player_vel.set!(JUMP_VEL) if @state.alive
+      @state.started = true
     end
   end
 
@@ -67,6 +71,8 @@ class GameWindow < Gosu::Window
       @state.scroll_x = 0
     end
 
+    return unless @state.started
+
     @state.player_vel += GRAVITY * dt
     @state.player_pos += @state.player_vel * dt
 
@@ -80,8 +86,13 @@ class GameWindow < Gosu::Window
       obst.x -= dt * OBSTACLE_SPEED
     end
 
-    if player_is_colliding?
+    if @state.alive && player_is_colliding?
       @state.alive = false
+      @state.player_vel.set!(DEATH_VELOCITY)
+    end
+
+    unless @state.alive
+      @state.player_rotation += dt *DEATH_ROT_VELOCITY
     end
   end
 
@@ -116,9 +127,10 @@ class GameWindow < Gosu::Window
         @images[:obstacle].draw(obst.x, -height - img_y + (height - obst.y - OBSTACLE_GAP), 0)
       end
     end
-    @images[:player].draw(@state.player_pos.x, @state.player_pos.y, 0)
 
-    debug_draw
+    @images[:player].draw_rot(@state.player_pos.x, @state.player_pos.y, 0, @state.player_rotation, 0, 0)
+
+    # debug_draw # toggle rect collision lines
   end
 
   def player_rect
