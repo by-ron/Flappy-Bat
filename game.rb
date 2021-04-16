@@ -6,6 +6,7 @@ GRAVITY = Vec[0, 600] # pixels/sec^2
 JUMP_VEL = Vec[0, -300]
 OBSTACLE_SPEED = 200 # pixels/sec
 OBSTACLE_SPAWN_INTERVAL = 1.3 # spawn new obst ever 2 secs
+OBSTACLE_GAP = 100 # pixels
 
 Obstacle = DefStruct.new{{
   y: 0,
@@ -44,7 +45,7 @@ class GameWindow < Gosu::Window
   end
 
   def spawn_obstacle
-    @state.obstacles << Vec[width, 200]
+    @state.obstacles << Vec[width, rand(50...300)]
   end
 
   def update
@@ -76,9 +77,12 @@ class GameWindow < Gosu::Window
 
 
     @state.obstacles.each do |obst|
-      @images[:obstacle].draw(obst.x, -@images[:obstacle].height + obst.y, 0)
+      img_y = @images[:obstacle].height
+      # top obstacle
+      @images[:obstacle].draw(obst.x, obst.y - img_y, 0)
       scale(1, -1) do
-        # @images[:obstacle].draw(obst.x, -height - 400, 0)
+        # bottom obstacle
+        @images[:obstacle].draw(obst.x, -height - img_y + (height - obst.y - OBSTACLE_GAP), 0)
       end
     end
     @images[:player].draw(20, @state.player_pos.y, 0)
